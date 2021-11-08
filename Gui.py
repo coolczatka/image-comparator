@@ -6,7 +6,7 @@ from globals import Config
 from PIL import Image
 from PIL.ImageQt import ImageQt
 import logging
-from actions import interpolationButtonAction, noicetypeChangedAction, copyImageToSiblingAction
+from actions import interpolationButtonAction, noicetypeChangedAction, copyImageToSiblingAction, compressImageAction
 import functools
 
 class MainWindow(QMainWindow):
@@ -84,7 +84,8 @@ class ImageLabel(QLabel):
         elif action == copyAction:
             copyImageToSiblingAction(self)
         elif action == compressAction:
-            pass
+            cd = CompressionDialog(self)
+            cd.exec_()
         else:
             pass
 
@@ -154,3 +155,28 @@ class NoiseDialog(QDialog):
     def connectEvents(self):
         self.noicetypeCombobox.currentTextChanged.connect(functools.partial(noicetypeChangedAction, self))
         self.acceptButton.clicked.connect(functools.partial(interpolationButtonAction, self.parent, self))
+
+
+class CompressionDialog(QDialog):
+    def __init__(self, parent):
+        super(QDialog, self).__init__()
+        self.setWindowTitle('Kompresja')
+        self.parent = parent
+
+        self.compressionRate = QLineEdit('1')
+        self.acceptButton = QPushButton('Wykonaj')
+
+        self.buildLayout()
+        self.connectEvents()
+
+    def buildLayout(self):
+        widget = QWidget(self.parent)
+        vertical = QVBoxLayout(widget)
+        vertical.addWidget(self.compressionRate)
+        vertical.addWidget(self.acceptButton)
+        self.setLayout(vertical)
+
+        return widget
+
+    def connectEvents(self):
+        self.acceptButton.clicked.connect(functools.partial(compressImageAction, self.parent, self))

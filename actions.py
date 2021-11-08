@@ -1,6 +1,6 @@
 import logging
 from PIL import Image as ImageModule
-
+from io import BytesIO
 
 def interpolationButtonAction(imageLabel, dialogWindow):
     logging.debug("Akcja interpolacji")
@@ -32,3 +32,10 @@ def copyImageToSiblingAction(imageLabel):
 def noicetypeChangedAction(dialogWindow):
     logging.debug("Zmiana typu szumu")
     pass
+
+def compressImageAction(imageLabel, dialogWindow):
+    logging.debug("Kompresja")
+    compressionRate = int(dialogWindow.compressionRate.text())
+    buffer = BytesIO()
+    imageLabel.image.save(buffer, "JPEG", quality = compressionRate)
+    imageLabel.setupImage(buffer)
