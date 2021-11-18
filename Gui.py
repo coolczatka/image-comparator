@@ -6,8 +6,11 @@ from globals import Config
 from PIL import Image
 from PIL.ImageQt import ImageQt
 import logging
-from actions import interpolationButtonAction, noicetypeChangedAction, copyImageToSiblingAction, compressImageAction
+from actions import interpolationButtonAction, copyImageToSiblingAction, \
+    compressImageAction, calculateMetricAction, addGaussNoiceAction, \
+    addSaltAndPepperNoiceAction
 import functools
+from io import BytesIO
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -17,7 +20,8 @@ class MainWindow(QMainWindow):
 
         self.leftImageLabel = ImageLabel()
         self.rightImageLabel = ImageLabel()
-
+        self.triggerButton = QPushButton('Oblicz')
+        self.metricSelect = QComboBox()
         self.leftImageLabel.setSibling(self.rightImageLabel)
         self.rightImageLabel.setSibling(self.leftImageLabel)
 
@@ -28,11 +32,11 @@ class MainWindow(QMainWindow):
         mainLayout = QVBoxLayout(centralWidget)
 
         placeholder1 = QLabel('Placeholder1')
-        placeholder2 = QLabel('Placeholder2')
 
         mainLayout.addWidget(placeholder1)
         mainLayout.addWidget(self.buildMainHolizontalWidget(centralWidget))
-        mainLayout.addWidget(placeholder2)
+        mainLayout.addWidget(self.buildMetricCalculatorWrapper(centralWidget))
+        self.connectEvents()
         self.setLayout(mainLayout)
 
     def buildMainHolizontalWidget(self, parent):
@@ -42,6 +46,19 @@ class MainWindow(QMainWindow):
         mainHorizontal.addWidget(self.rightImageLabel)
         widget.setLayout(mainHorizontal)
         return widget
+
+    def buildMetricCalculatorWrapper(self, parent):
+        widget = QWidget(parent)
+        metricCalculatorWrapper = QHBoxLayout()
+        for item in Config.availableMetrics.keys():
+            self.metricSelect.addItem(item)
+        metricCalculatorWrapper.addWidget(self.metricSelect)
+        metricCalculatorWrapper.addWidget(self.triggerButton)
+        widget.setLayout(metricCalculatorWrapper)
+        return widget
+
+    def connectEvents(self):
+        self.triggerButton.clicked.connect(functools.partial(calculateMetricAction, self))
 
 class ImageLabel(QLabel):
     def __init__(self):
@@ -64,12 +81,17 @@ class ImageLabel(QLabel):
         gp = event.globalPos()
         menu = QMenu(self)
 
+        noicesmenu = QMenu(menu)
+        noicesmenu.setTitle('Dodaj szum')
+        gaussNoiceAction = noicesmenu.addAction(Config.availableNoices['gauss'])
+        saltandPepperNoiceAction = noicesmenu.addAction(Config.availableNoices['saltandpepper'])
+
         loadImageAction = menu.addAction('Wczytaj obraz')
         resizeAction = menu.addAction('Przeskaluj obraz')
-        noiceAction = menu.addAction('Dodaj szum')
         copyAction = menu.addAction('Skopiuj obok')
         compressAction = menu.addAction('Skompresuj')
-
+        imageInfo = menu.addAction('Info')
+        menu.addMenu(noicesmenu)
         action = menu.exec_(gp)
 
         if action == loadImageAction:
@@ -78,14 +100,22 @@ class ImageLabel(QLabel):
         elif action == resizeAction:
             rd = ResizeDialog(self)
             rd.exec_()
-        elif action == noiceAction:
-            nd = NoiseDialog(self)
+        elif action == gaussNoiceAction:
+            logging.debug('noice')
+            logging.debug(Config.availableNoices['gauss'])
+            nd = NoiseDialog(self, Config.availableNoices['gauss'])
+            nd.exec_()
+        elif action == saltandPepperNoiceAction:
+            nd = NoiseDialog(self, Config.availableNoices['saltandpepper'])
             nd.exec_()
         elif action == copyAction:
             copyImageToSiblingAction(self)
         elif action == compressAction:
             cd = CompressionDialog(self)
             cd.exec_()
+        elif action == imageInfo:
+            id = InfoDialog(self)
+            id.exec_()
         else:
             pass
 
@@ -129,32 +159,61 @@ class ResizeDialog(QDialog):
 
 
 class NoiseDialog(QDialog):
-    def __init__(self, parent):
+    def __init__(self, parent, type):
         super(QDialog, self).__init__()
         self.setWindowTitle('Zaszumienie')
         self.parent = parent
+        self.type = type
 
-        self.noicetypeCombobox = QComboBox()
-        self.noicetypeCombobox.addItem('Gaussa')
-        self.noicetypeCombobox.addItem('Sól i pieprz')
+        self.acceptButton = QPushButton('Wykonaj')
+        self.mi = QLineEdit()
+        self.mi.setPlaceholderText("Mi")
+        self.sigma = QLineEdit()
+        self.sigma.setPlaceholderText("Sigma")
+        self.noicedPercent = QLineEdit()
+        self.noicedPercent.setPlaceholderText("Procent zaszumienia")
+
+        if(self.type == Config.availableNoices['gauss']):
+            self.addGaussNoiceInputs()
+        elif(self.type == Config.availableNoices['saltandpepper']):
+            self.addSaltAndPepperInputs()
+        self.connectEvents()
+
+    def refreshFields(self):
 
         self.acceptButton = QPushButton('Wykonaj')
 
-        self.buildLayout()
-        self.connectEvents()
+        self.mi = QLineEdit()
+        self.mi.setPlaceholderText("Mi")
+        self.sigma = QLineEdit()
+        self.sigma.setPlaceholderText("Sigma")
+        self.noicedPercent = QLineEdit()
+        self.noicedPercent.setPlaceholderText("Procent zaszumienia")
 
-    def buildLayout(self):
-        widget = QWidget(self.parent)
+    def addGaussNoiceInputs(self):
+        self.refreshFields()
+        widget = QWidget(self)
         vertical = QVBoxLayout(widget)
-        vertical.addWidget(self.noicetypeCombobox)
+        vertical.addWidget(self.mi)
+        vertical.addWidget(self.sigma)
         vertical.addWidget(self.acceptButton)
         self.setLayout(vertical)
+        return widget
 
+    def addSaltAndPepperInputs(self):
+        self.refreshFields()
+        widget = QWidget(self)
+        vertical = QVBoxLayout(widget)
+        vertical.addWidget(self.noicedPercent)
+        vertical.addWidget(self.acceptButton)
+        self.setLayout(vertical)
         return widget
 
     def connectEvents(self):
-        self.noicetypeCombobox.currentTextChanged.connect(functools.partial(noicetypeChangedAction, self))
-        self.acceptButton.clicked.connect(functools.partial(interpolationButtonAction, self.parent, self))
+        if (self.type == Config.availableNoices['gauss']):
+            self.acceptButton.clicked.connect(functools.partial(addGaussNoiceAction, self.parent, self))
+        elif (self.type == Config.availableNoices['saltandpepper']):
+            self.acceptButton.clicked.connect(functools.partial(addSaltAndPepperNoiceAction, self.parent, self))
 
 
 class CompressionDialog(QDialog):
@@ -163,7 +222,8 @@ class CompressionDialog(QDialog):
         self.setWindowTitle('Kompresja')
         self.parent = parent
 
-        self.compressionRate = QLineEdit('1')
+        self.quality = QLineEdit('1')
+        
         self.acceptButton = QPushButton('Wykonaj')
 
         self.buildLayout()
@@ -172,7 +232,7 @@ class CompressionDialog(QDialog):
     def buildLayout(self):
         widget = QWidget(self.parent)
         vertical = QVBoxLayout(widget)
-        vertical.addWidget(self.compressionRate)
+        vertical.addWidget(self.quality)
         vertical.addWidget(self.acceptButton)
         self.setLayout(vertical)
 
@@ -180,3 +240,34 @@ class CompressionDialog(QDialog):
 
     def connectEvents(self):
         self.acceptButton.clicked.connect(functools.partial(compressImageAction, self.parent, self))
+
+class InfoDialog(QDialog):
+    def __init__(self, parent):
+        super(QDialog, self).__init__()
+        self.setWindowTitle('Informacje o obrazie')
+        self.parent = parent
+
+        self.sizeInfo = QLabel('Rozmiar: '+str(self.parent.image.size))
+        buffer = BytesIO()
+        self.parent.image.save(buffer, "JPEG")
+        filesize = buffer.tell()
+        self.wageInfo = QLabel('Waga: '+str(filesize) + " B")
+
+        self.buildLayout()
+
+    def buildLayout(self):
+        widget = QWidget(self.parent)
+        vertical = QVBoxLayout(widget)
+        vertical.addWidget(self.sizeInfo)
+        vertical.addWidget(self.wageInfo)
+        self.setLayout(vertical)
+
+        return widget
+
+class MeticDialog(QDialog):
+    def __init__(self, parent):
+        super(QDialog, self).__init__()
+        self.setWindowTitle('Wynik')
+        self.parent = parent
+
+        logging.debug(parent)

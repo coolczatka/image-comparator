@@ -1,6 +1,9 @@
 import logging
 from PIL import Image as ImageModule
+from PIL import ImageFilter
 from io import BytesIO
+from globals import Config
+from imagemodifiers import NoiceHelper
 
 def interpolationButtonAction(imageLabel, dialogWindow):
     logging.debug("Akcja interpolacji")
@@ -29,13 +32,25 @@ def copyImageToSiblingAction(imageLabel):
     logging.debug("Skopiowanie obrazu")
     imageLabel.siblingImageLabel.setupImageFromMemory(imageLabel.image)
 
-def noicetypeChangedAction(dialogWindow):
-    logging.debug("Zmiana typu szumu")
-    pass
+def addGaussNoiceAction(imageLabel, dialogWindow):
+    mi = float(dialogWindow.mi.text())
+    sigma = float(dialogWindow.sigma.text())
+    nh = NoiceHelper(imageLabel.image)
+    imageLabel.setupImageFromMemory(nh.gauss(mi, sigma))
+
+def addSaltAndPepperNoiceAction(imageLabel, dialogWindow):
+    logging.debug('wbija')
+    percent = float(dialogWindow.noicedPercent.text())
+    nh = NoiceHelper(imageLabel.image)
+    imageLabel.setupImageFromMemory(nh.saltandpepper(percent))
 
 def compressImageAction(imageLabel, dialogWindow):
     logging.debug("Kompresja")
-    compressionRate = int(dialogWindow.compressionRate.text())
+    compressionRate = int(dialogWindow.quality.text())
     buffer = BytesIO()
     imageLabel.image.save(buffer, "JPEG", quality = compressionRate)
     imageLabel.setupImage(buffer)
+
+def calculateMetricAction(window):
+    selected = window.metricSelect.currentText()
+    logging.debug(selected)

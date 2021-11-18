@@ -9,3 +9,12 @@ class Config:
 
     logfile = 'debug.log'
     logtarget = 'stdout'
+
+    availableMetrics = {
+        'pearson': 'Pearson'
+    }
+
+    availableNoices = {
+        'gauss': 'Szum gaussa',
+        'saltandpepper': 'Sól i pieprz'
+    }
