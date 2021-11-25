@@ -11,10 +11,13 @@ class Config:
     logtarget = 'stdout'
 
     availableMetrics = {
-        'pearson': 'Pearson'
+        'pearson': 'Korelacja Pearsona',
+        'tanimoto': 'Miara Tanimoto',
+        'stochastic_sign_change': 'Stochastyczna zmiana znaku'
     }
 
-    availableNoices = {
+    availableModifiers = {
         'gauss': 'Szum gaussa',
-        'saltandpepper': 'Sól i pieprz'
+        'saltandpepper': 'Sól i pieprz',
+        'gassianblur': 'Rozmycie gaussa'
     }

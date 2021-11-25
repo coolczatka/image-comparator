@@ -1,7 +1,7 @@
 import random
 import numpy as np
 from PIL import Image
-
+from PIL import ImageFilter
 import logging
 
 class NoiceHelper():
@@ -27,3 +27,9 @@ class NoiceHelper():
                         blackorwhite = 255 if random.random() > .5 else 0
                         imageArray[height, width, canal] = blackorwhite
         return Image.fromarray(imageArray)
+
+    def gassianblur(self, masksize = 3):
+        return self.image.filter(ImageFilter.GaussianBlur(radius=masksize))
+
+class ImageTransformer:
+    pass

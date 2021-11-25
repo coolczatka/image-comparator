@@ -4,6 +4,7 @@ from PIL import ImageFilter
 from io import BytesIO
 from globals import Config
 from imagemodifiers import NoiceHelper
+from metrics import MetricCalculator
 
 def interpolationButtonAction(imageLabel, dialogWindow):
     logging.debug("Akcja interpolacji")
@@ -44,6 +45,12 @@ def addSaltAndPepperNoiceAction(imageLabel, dialogWindow):
     nh = NoiceHelper(imageLabel.image)
     imageLabel.setupImageFromMemory(nh.saltandpepper(percent))
 
+def addGaussianBlurAction(imageLabel, dialogWindow):
+    logging.debug('wbija')
+    masksize = float(dialogWindow.masksize.text())
+    nh = NoiceHelper(imageLabel.image)
+    imageLabel.setupImageFromMemory(nh.gassianblur(masksize))
+
 def compressImageAction(imageLabel, dialogWindow):
     logging.debug("Kompresja")
     compressionRate = int(dialogWindow.quality.text())
@@ -53,4 +60,24 @@ def compressImageAction(imageLabel, dialogWindow):
 
 def calculateMetricAction(window):
     selected = window.metricSelect.currentText()
-    logging.debug(selected)
+    reversed = {v: k for k, v in Config.availableMetrics.items()}
+    mc = MetricCalculator(window.leftImageLabel.image, window.rightImageLabel.image)
+    method = getattr(mc, reversed[selected])
+    value = method()
+    window.resultLabel.setText('Wynik: '+str(value))
+
+def calculateAllMetricsButton(window):
+    logging.debug("Wszystkie metryki")
+    resultFile = open('result.xml', 'w')
+    text = ''
+    xmltext = '<result>\n'
+    mc = MetricCalculator(window.leftImageLabel.image, window.rightImageLabel.image)
+    for metric, metricName in Config.availableMetrics.items():
+        method = getattr(mc, metric)
+        metricvalue = method()
+        xmltext += f"<{metric}>{metricvalue}</{metric}>\n"
+        text += f"{metricName}: {metricvalue}\n"
+    xmltext += '</result>'
+    resultFile.write(xmltext)
+    resultFile.close()
+    window.showResult(text)

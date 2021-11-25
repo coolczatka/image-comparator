@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, \
     QVBoxLayout, QWidget, QLabel, QMenu, QFileDialog, QDialog, \
-    QRadioButton, QLineEdit, QPushButton, QComboBox
+    QRadioButton, QLineEdit, QPushButton, QComboBox, QMessageBox
 from PyQt5.QtGui import QIcon, QPixmap
 from globals import Config
 from PIL import Image
@@ -8,7 +8,7 @@ from PIL.ImageQt import ImageQt
 import logging
 from actions import interpolationButtonAction, copyImageToSiblingAction, \
     compressImageAction, calculateMetricAction, addGaussNoiceAction, \
-    addSaltAndPepperNoiceAction
+    addSaltAndPepperNoiceAction, calculateAllMetricsButton, addGaussianBlurAction
 import functools
 from io import BytesIO
 
@@ -20,8 +20,10 @@ class MainWindow(QMainWindow):
 
         self.leftImageLabel = ImageLabel()
         self.rightImageLabel = ImageLabel()
+        self.allmetricsButton = QPushButton('Oblicz wszystkie dostępne metryki')
         self.triggerButton = QPushButton('Oblicz')
         self.metricSelect = QComboBox()
+        self.resultLabel = QLabel('Wynik: ')
         self.leftImageLabel.setSibling(self.rightImageLabel)
         self.rightImageLabel.setSibling(self.leftImageLabel)
 
@@ -31,9 +33,9 @@ class MainWindow(QMainWindow):
 
         mainLayout = QVBoxLayout(centralWidget)
 
-        placeholder1 = QLabel('Placeholder1')
+        self.allmetricsButton.clicked.connect(functools.partial(calculateAllMetricsButton, self))
 
-        mainLayout.addWidget(placeholder1)
+        mainLayout.addWidget(self.allmetricsButton)
         mainLayout.addWidget(self.buildMainHolizontalWidget(centralWidget))
         mainLayout.addWidget(self.buildMetricCalculatorWrapper(centralWidget))
         self.connectEvents()
@@ -50,15 +52,20 @@ class MainWindow(QMainWindow):
     def buildMetricCalculatorWrapper(self, parent):
         widget = QWidget(parent)
         metricCalculatorWrapper = QHBoxLayout()
-        for item in Config.availableMetrics.keys():
+        for _,item in Config.availableMetrics.items():
             self.metricSelect.addItem(item)
         metricCalculatorWrapper.addWidget(self.metricSelect)
         metricCalculatorWrapper.addWidget(self.triggerButton)
+        metricCalculatorWrapper.addWidget(self.resultLabel)
         widget.setLayout(metricCalculatorWrapper)
         return widget
 
     def connectEvents(self):
         self.triggerButton.clicked.connect(functools.partial(calculateMetricAction, self))
+
+    def showResult(self, resultText):
+        QMessageBox.about(self, "Wynik", resultText)
+
 
 class ImageLabel(QLabel):
     def __init__(self):
@@ -83,8 +90,9 @@ class ImageLabel(QLabel):
 
         noicesmenu = QMenu(menu)
         noicesmenu.setTitle('Dodaj szum')
-        gaussNoiceAction = noicesmenu.addAction(Config.availableNoices['gauss'])
-        saltandPepperNoiceAction = noicesmenu.addAction(Config.availableNoices['saltandpepper'])
+        gaussNoiceAction = noicesmenu.addAction(Config.availableModifiers['gauss'])
+        saltandPepperNoiceAction = noicesmenu.addAction(Config.availableModifiers['saltandpepper'])
+        gaussianBlurAction = noicesmenu.addAction(Config.availableModifiers['gassianblur'])
 
         loadImageAction = menu.addAction('Wczytaj obraz')
         resizeAction = menu.addAction('Przeskaluj obraz')
@@ -102,11 +110,14 @@ class ImageLabel(QLabel):
             rd.exec_()
         elif action == gaussNoiceAction:
             logging.debug('noice')
-            logging.debug(Config.availableNoices['gauss'])
-            nd = NoiseDialog(self, Config.availableNoices['gauss'])
+            logging.debug(Config.availableModifiers['gauss'])
+            nd = NoiseDialog(self, Config.availableModifiers['gauss'])
             nd.exec_()
         elif action == saltandPepperNoiceAction:
-            nd = NoiseDialog(self, Config.availableNoices['saltandpepper'])
+            nd = NoiseDialog(self, Config.availableModifiers['saltandpepper'])
+            nd.exec_()
+        elif action == gaussianBlurAction:
+            nd = NoiseDialog(self, Config.availableModifiers['gassianblur'])
             nd.exec_()
         elif action == copyAction:
             copyImageToSiblingAction(self)
@@ -166,17 +177,24 @@ class NoiseDialog(QDialog):
         self.type = type
 
         self.acceptButton = QPushButton('Wykonaj')
+        # szum gaussa
         self.mi = QLineEdit()
         self.mi.setPlaceholderText("Mi")
         self.sigma = QLineEdit()
         self.sigma.setPlaceholderText("Sigma")
+        # sól i pieprz
         self.noicedPercent = QLineEdit()
         self.noicedPercent.setPlaceholderText("Procent zaszumienia")
+        # rozmycie gaussa
+        self.masksize = QLineEdit()
+        self.masksize.setPlaceholderText("Wielkosc maski")
 
-        if(self.type == Config.availableNoices['gauss']):
+        if(self.type == Config.availableModifiers['gauss']):
             self.addGaussNoiceInputs()
-        elif(self.type == Config.availableNoices['saltandpepper']):
+        elif(self.type == Config.availableModifiers['saltandpepper']):
             self.addSaltAndPepperInputs()
+        elif (self.type == Config.availableModifiers['gassianblur']):
+            self.addGaussianBlurInputs()
         self.connectEvents()
 
     def refreshFields(self):
@@ -209,11 +227,22 @@ class NoiseDialog(QDialog):
         self.setLayout(vertical)
         return widget
 
+    def addGaussianBlurInputs(self):
+        self.refreshFields()
+        widget = QWidget(self)
+        vertical = QVBoxLayout(widget)
+        vertical.addWidget(self.masksize)
+        vertical.addWidget(self.acceptButton)
+        self.setLayout(vertical)
+        return widget
+
     def connectEvents(self):
-        if (self.type == Config.availableNoices['gauss']):
+        if (self.type == Config.availableModifiers['gauss']):
             self.acceptButton.clicked.connect(functools.partial(addGaussNoiceAction, self.parent, self))
-        elif (self.type == Config.availableNoices['saltandpepper']):
+        elif (self.type == Config.availableModifiers['saltandpepper']):
             self.acceptButton.clicked.connect(functools.partial(addSaltAndPepperNoiceAction, self.parent, self))
+        elif (self.type == Config.availableModifiers['gassianblur']):
+            self.acceptButton.clicked.connect(functools.partial(addGaussianBlurAction, self.parent, self))
 
 
 class CompressionDialog(QDialog):
@@ -241,6 +270,7 @@ class CompressionDialog(QDialog):
     def connectEvents(self):
         self.acceptButton.clicked.connect(functools.partial(compressImageAction, self.parent, self))
 
+
 class InfoDialog(QDialog):
     def __init__(self, parent):
         super(QDialog, self).__init__()
@@ -263,6 +293,7 @@ class InfoDialog(QDialog):
         self.setLayout(vertical)
 
         return widget
+
 
 class MeticDialog(QDialog):
     def __init__(self, parent):
