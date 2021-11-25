@@ -8,7 +8,8 @@ from PIL.ImageQt import ImageQt
 import logging
 from actions import interpolationButtonAction, copyImageToSiblingAction, \
     compressImageAction, calculateMetricAction, addGaussNoiceAction, \
-    addSaltAndPepperNoiceAction, calculateAllMetricsButton, addGaussianBlurAction
+    addSaltAndPepperNoiceAction, calculateAllMetricsButton, addGaussianBlurAction, \
+    translationButtonAction, rotationAction
 import functools
 from io import BytesIO
 
@@ -23,7 +24,7 @@ class MainWindow(QMainWindow):
         self.allmetricsButton = QPushButton('Oblicz wszystkie dostępne metryki')
         self.triggerButton = QPushButton('Oblicz')
         self.metricSelect = QComboBox()
-        self.resultLabel = QLabel('Wynik: ')
+        self.resultLabel = QLabel('Wynik: \nCzas: ')
         self.leftImageLabel.setSibling(self.rightImageLabel)
         self.rightImageLabel.setSibling(self.leftImageLabel)
 
@@ -94,8 +95,14 @@ class ImageLabel(QLabel):
         saltandPepperNoiceAction = noicesmenu.addAction(Config.availableModifiers['saltandpepper'])
         gaussianBlurAction = noicesmenu.addAction(Config.availableModifiers['gassianblur'])
 
+        transformMenu = QMenu(menu)
+        transformMenu.setTitle('Transformuj obraz')
+        resizeAction = transformMenu.addAction('Przeskaluj obraz')
+        translationAction = transformMenu.addAction('Translacja')
+        rotationAction = transformMenu.addAction('Rotacja')
+
         loadImageAction = menu.addAction('Wczytaj obraz')
-        resizeAction = menu.addAction('Przeskaluj obraz')
+        transformMenu = menu.addMenu(transformMenu)
         copyAction = menu.addAction('Skopiuj obok')
         compressAction = menu.addAction('Skompresuj')
         imageInfo = menu.addAction('Info')
@@ -107,6 +114,12 @@ class ImageLabel(QLabel):
             self.setupImage(newPath)
         elif action == resizeAction:
             rd = ResizeDialog(self)
+            rd.exec_()
+        elif action == translationAction:
+            rd = TranslationDialog(self)
+            rd.exec_()
+        elif action == rotationAction:
+            rd = RotationDialog(self)
             rd.exec_()
         elif action == gaussNoiceAction:
             logging.debug('noice')
@@ -168,6 +181,55 @@ class ResizeDialog(QDialog):
     def connectEvents(self):
         self.acceptButton.clicked.connect(functools.partial(interpolationButtonAction, self.parent, self))
 
+class TranslationDialog(QDialog):
+    def __init__(self, parent):
+        super(QDialog, self).__init__()
+        self.setWindowTitle('Translacja')
+        self.parent = parent
+
+        self.sizeInput = QLineEdit('0,0')
+        self.acceptButton = QPushButton('Wykonaj')
+
+        self.buildLayout()
+        self.connectEvents()
+
+    def buildLayout(self):
+        widget = QWidget(self.parent)
+        vertical = QVBoxLayout(widget)
+
+        vertical.addWidget(self.sizeInput)
+        vertical.addWidget(self.acceptButton)
+        self.setLayout(vertical)
+
+        return widget
+
+    def connectEvents(self):
+        self.acceptButton.clicked.connect(functools.partial(translationButtonAction, self.parent, self))
+
+class RotationDialog(QDialog):
+    def __init__(self, parent):
+        super(QDialog, self).__init__()
+        self.setWindowTitle('Rotatcja')
+        self.parent = parent
+
+        self.sizeInput = QLineEdit('0')
+        self.acceptButton = QPushButton('Wykonaj')
+
+        self.buildLayout()
+        self.connectEvents()
+
+    def buildLayout(self):
+        widget = QWidget(self.parent)
+        vertical = QVBoxLayout(widget)
+
+        vertical.addWidget(self.sizeInput)
+        vertical.addWidget(self.acceptButton)
+        self.setLayout(vertical)
+
+        return widget
+
+    def connectEvents(self):
+        self.acceptButton.clicked.connect(functools.partial(rotationAction, self.parent, self))
 
 class NoiseDialog(QDialog):
     def __init__(self, parent, type):

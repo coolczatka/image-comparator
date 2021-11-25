@@ -1,10 +1,11 @@
 import logging
 from PIL import Image as ImageModule
-from PIL import ImageFilter
 from io import BytesIO
 from globals import Config
-from imagemodifiers import NoiceHelper
+from imagemodifiers import NoiceHelper, ImageTransformer
 from metrics import MetricCalculator
+import time
+
 
 def interpolationButtonAction(imageLabel, dialogWindow):
     logging.debug("Akcja interpolacji")
@@ -26,9 +27,27 @@ def interpolationButtonAction(imageLabel, dialogWindow):
         type = ImageModule.BICUBIC
     elif dialogWindow.radioBox.isChecked():
         type = ImageModule.BOX
-    resized = imageLabel.image.resize(size, type)
+    it = ImageTransformer(imageLabel.image)
+    resized = it.resize(size, type)
     imageLabel.setupImageFromMemory(resized)
 
+def translationButtonAction(imageLabel, dialogWindow):
+    logging.debug("Akcja translacji")
+    vectorText = dialogWindow.sizeInput.text()
+    left, up = vectorText.split(',')
+    vector = (1, 0, int(left), 0, 1, int(up))
+    logging.debug(vector)
+    it = ImageTransformer(imageLabel.image)
+    changed = it.move(vector)
+    imageLabel.setupImageFromMemory(changed)
+
+def rotationAction(imageLabel, dialogWindow):
+    logging.debug("Akcja rotacji")
+    angleText = dialogWindow.sizeInput.text()
+    angle = float(angleText)
+    it = ImageTransformer(imageLabel.image)
+    changed = it.rotate(angle)
+    imageLabel.setupImageFromMemory(changed)
 def copyImageToSiblingAction(imageLabel):
     logging.debug("Skopiowanie obrazu")
     imageLabel.siblingImageLabel.setupImageFromMemory(imageLabel.image)
@@ -63,8 +82,10 @@ def calculateMetricAction(window):
     reversed = {v: k for k, v in Config.availableMetrics.items()}
     mc = MetricCalculator(window.leftImageLabel.image, window.rightImageLabel.image)
     method = getattr(mc, reversed[selected])
+    starttime = time.time()
     value = method()
-    window.resultLabel.setText('Wynik: '+str(value))
+    stoptime = time.time()
+    window.resultLabel.setText(f'Wynik: {value}\nCzas: {stoptime-starttime}s')
 
 def calculateAllMetricsButton(window):
     logging.debug("Wszystkie metryki")
@@ -73,6 +94,8 @@ def calculateAllMetricsButton(window):
     xmltext = '<result>\n'
     mc = MetricCalculator(window.leftImageLabel.image, window.rightImageLabel.image)
     for metric, metricName in Config.availableMetrics.items():
+        if(metric in Config.slowMetrics):
+            continue
         method = getattr(mc, metric)
         metricvalue = method()
         xmltext += f"<{metric}>{metricvalue}</{metric}>\n"
