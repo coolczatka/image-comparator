@@ -1,11 +1,11 @@
 import logging
 from PIL import Image as ImageModule
 from io import BytesIO
+
 from globals import Config
 from imagemodifiers import NoiceHelper, ImageTransformer
 from metrics import MetricCalculator
 import time
-
 
 def interpolationButtonAction(imageLabel, dialogWindow):
     logging.debug("Akcja interpolacji")
@@ -85,6 +85,7 @@ def calculateMetricAction(window):
     starttime = time.time()
     value = method()
     stoptime = time.time()
+
     window.resultLabel.setText(f'Wynik: {value}\nCzas: {stoptime-starttime}s')
 
 def calculateAllMetricsButton(window):
@@ -96,10 +97,11 @@ def calculateAllMetricsButton(window):
     for metric, metricName in Config.availableMetrics.items():
         if(metric in Config.slowMetrics):
             continue
+        mc.refreshImages()
         method = getattr(mc, metric)
         metricvalue = method()
         xmltext += f"<{metric}>{metricvalue}</{metric}>\n"
-        text += f"{metricName}: {metricvalue}\n"
+        text += f"{metricName}: {metricvalue:.3f}\n"
     xmltext += '</result>'
     resultFile.write(xmltext)
     resultFile.close()
