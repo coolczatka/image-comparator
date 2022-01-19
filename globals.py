@@ -64,7 +64,7 @@ class Config:
             'maxsim': min,
         },
         'shannon_mutual_info': {
-            'range': (0, 'Największa z entropi porównywanych obrazów - %s'),
+            'range': (0, 1),
             'maxsim': max,
         }
     }

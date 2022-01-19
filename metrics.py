@@ -80,17 +80,20 @@ class MetricCalculator:
 
     def minimum_ratio(self):
         result = 0
+        self.image1Array = self.image1Array.astype(np.int16)
+        self.image2Array = self.image2Array.astype(np.int16)
+
         for height in range(self.image1Array.shape[0]):
             for width in range(self.image1Array.shape[1]):
                 try:
-                    result += min(self.image1Array[height, width]/self.image2Array[height, width],
-                                self.image2Array[height, width]/self.image1Array[height, width])
+                    result += min((self.image1Array[height, width]+1)/(self.image2Array[height, width]+1),
+                                  (self.image2Array[height, width]+1)/(self.image1Array[height, width]+1))
                 except (ZeroDivisionError, RuntimeWarning):
                     pass
         return result / self.n
 
     def spearman_rho(self):
-        stats.spearmanr(self.image1Array.flat, self.image2Array.flat).correlation
+        return stats.spearmanr(self.image1Array.flat, self.image2Array.flat).correlation
 
     # def old_spearman_rho(self):
     #     try:

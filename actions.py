@@ -160,7 +160,7 @@ def calculateAllMetricsButton(window):
         method = getattr(mc, metric)
         metricvalue = method()
         xmltext += f"<{metric}>{metricvalue}</{metric}>\n"
-        text += f"{metricName}: {metricvalue:.3f}\n"
+        text += f"{metricName}: {metricvalue:.3f} {Config.metricsProperties[metric]['range']}\n"
     xmltext += '</result>'
     resultFile.write(xmltext)
     resultFile.close()
