@@ -2,6 +2,7 @@ import random
 import numpy as np
 from PIL import Image
 from PIL import ImageFilter
+from copy import deepcopy
 import logging
 
 class NoiceHelper():
@@ -12,13 +13,11 @@ class NoiceHelper():
         imageArray = np.array(self.image)
         for height in range(imageArray.shape[0]):
             for width in range(imageArray.shape[1]):
-                noice = random.gauss(mi, sigma)
-                for canal in range(imageArray.shape[2]):
-                    imageArray[height, width, canal] += noice
-                    if(imageArray[height, width, canal] < 0):
-                        imageArray[height, width, canal] = 0
-                    elif(imageArray[height, width, canal] >= 255):
-                        imageArray[height, width, canal] = 255
+                noice = round(random.gauss(mi, sigma))
+                val = deepcopy(imageArray[height, width])
+                imageArray[height, width] = [
+                    addIntegersWithBounds(value, noice) for value in imageArray[height, width]]
+                # print('[',noice,']', val, ' -> ', imageArray[height, width])
         return Image.fromarray(imageArray)
 
     def saltandpepper(self,  percent):
@@ -48,3 +47,10 @@ class ImageTransformer:
 
     def resize(self, size ,method):
         return self.image.resize(size, method)
+
+    def crop(self, points):
+        sizes = points[0][0], points[0][1], points[1][0], points[1][1]
+        return self.image.crop(sizes)
+
+def addIntegersWithBounds(a, b, minval = 0, maxval = 255):
+    return int(min(max(minval, a+b), maxval))

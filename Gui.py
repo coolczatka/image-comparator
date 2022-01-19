@@ -9,7 +9,7 @@ import logging
 from actions import interpolationButtonAction, copyImageToSiblingAction, \
     compressImageAction, calculateMetricAction, addGaussNoiceAction, \
     addSaltAndPepperNoiceAction, calculateAllMetricsButton, addGaussianBlurAction, \
-    translationButtonAction, rotationAction
+    translationButtonAction, rotationAction, cuttingAction
 import functools
 from io import BytesIO
 
@@ -21,6 +21,8 @@ class MainWindow(QMainWindow):
 
         self.leftImageLabel = ImageLabel()
         self.rightImageLabel = ImageLabel()
+        self.resultImage = None
+
         self.allmetricsButton = QPushButton('Oblicz wszystkie dostępne metryki')
         self.triggerButton = QPushButton('Oblicz')
         self.metricSelect = QComboBox()
@@ -67,6 +69,11 @@ class MainWindow(QMainWindow):
     def showResult(self, resultText):
         QMessageBox.about(self, "Wynik", resultText)
 
+    def showNearestPart(self, image):
+        self.resultImage = image
+        imagedialog = ImageDialog(self)
+        imagedialog.exec_()
+
 
 class ImageLabel(QLabel):
     def __init__(self):
@@ -100,6 +107,7 @@ class ImageLabel(QLabel):
         resizeAction = transformMenu.addAction('Przeskaluj obraz')
         translationAction = transformMenu.addAction('Translacja')
         rotationAction = transformMenu.addAction('Rotacja')
+        cutingAction = transformMenu.addAction('Przytnij')
 
         loadImageAction = menu.addAction('Wczytaj obraz')
         transformMenu = menu.addMenu(transformMenu)
@@ -120,6 +128,9 @@ class ImageLabel(QLabel):
             rd.exec_()
         elif action == rotationAction:
             rd = RotationDialog(self)
+            rd.exec_()
+        elif action == cutingAction:
+            rd = CuttingDialog(self)
             rd.exec_()
         elif action == gaussNoiceAction:
             logging.debug('noice')
@@ -156,6 +167,7 @@ class ResizeDialog(QDialog):
 
         self.sizeInput = QLineEdit('0,0')
         self.radioNearest = QRadioButton('NEAREST')
+        self.radioNearest.setChecked(True)
         self.radioBilinear = QRadioButton('BILINEAR')
         self.radioBicubic = QRadioButton('BICUBIC')
         self.radioBox = QRadioButton('BOX')
@@ -230,6 +242,32 @@ class RotationDialog(QDialog):
 
     def connectEvents(self):
         self.acceptButton.clicked.connect(functools.partial(rotationAction, self.parent, self))
+
+class CuttingDialog(QDialog):
+    def __init__(self, parent):
+        super(QDialog, self).__init__()
+        self.setWindowTitle('Rotatcja')
+        self.parent = parent
+
+        self.sizeInput = QLineEdit(f'(0, 0) ({self.parent.image.size[0]},{self.parent.image.size[1]})')
+        self.acceptButton = QPushButton('Wykonaj')
+
+        self.buildLayout()
+        self.connectEvents()
+
+    def buildLayout(self):
+        widget = QWidget(self.parent)
+        vertical = QVBoxLayout(widget)
+
+        vertical.addWidget(self.sizeInput)
+        vertical.addWidget(self.acceptButton)
+        self.setLayout(vertical)
+
+        return widget
+
+    def connectEvents(self):
+        self.acceptButton.clicked.connect(functools.partial(cuttingAction, self.parent, self))
+
 
 class NoiseDialog(QDialog):
     def __init__(self, parent, type):
@@ -314,7 +352,7 @@ class CompressionDialog(QDialog):
         self.parent = parent
 
         self.quality = QLineEdit('1')
-        
+
         self.acceptButton = QPushButton('Wykonaj')
 
         self.buildLayout()
@@ -364,3 +402,24 @@ class MeticDialog(QDialog):
         self.parent = parent
 
         logging.debug(parent)
+
+class ImageDialog(QDialog):
+    def __init__(self, parent):
+        super(QDialog, self).__init__()
+        self.setWindowTitle('Wynik')
+        self.parent = parent
+        self.image = QLabel()
+
+        imageQt = ImageQt(parent.resultImage).rgbSwapped().rgbSwapped()
+        pixmap = QPixmap.fromImage(imageQt)
+        self.image.setPixmap(pixmap)
+
+        self.buildLayout()
+
+    def buildLayout(self):
+        widget = QWidget(self.parent)
+        vertical = QVBoxLayout(widget)
+        vertical.addWidget(self.image)
+        self.setLayout(vertical)
+
+        return widget

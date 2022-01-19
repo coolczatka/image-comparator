@@ -1,4 +1,8 @@
 import logging
+import traceback
+
+def logerror():
+    logging.error(traceback.format_exc())
 
 def debugactionwrapper(func):
     def inner(*args, **kwargs):
