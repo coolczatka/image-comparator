@@ -12,6 +12,10 @@ class Config:
     logfile = 'debug.log'
     logtarget = 'stdout'
 
+    resultfile = 'result.xml'
+    resultallfile = 'resultall.xml'
+    resultseriesfile = 'resultseries.xml'
+
     availableMetrics = {
         'pearson': 'Korelacja Pearsona',
         'tanimoto': 'Miara Tanimoto',

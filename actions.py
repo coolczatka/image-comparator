@@ -1,4 +1,5 @@
 import copy
+import datetime
 import logging
 from PIL import Image as ImageModule, ImageDraw
 from io import BytesIO
@@ -9,6 +10,8 @@ from metrics import MetricCalculator
 import time
 import re
 import numpy as np
+import os
+from xml.etree import ElementTree
 from exceptions import logerror
 
 def interpolationButtonAction(imageLabel, dialogWindow):
@@ -107,19 +110,33 @@ def calculateMetricAction(window):
     selected = window.metricSelect.currentText()
     logging.debug('Obliczanie metryki '+selected)
     reversed = {v: k for k, v in Config.availableMetrics.items()}
+
     im1 = copy.deepcopy(window.leftImageLabel.image)
     im2 = copy.deepcopy(window.rightImageLabel.image)
     try:
         if(im1.size[0] == im2.size[0] and im1.size[1] == im2.size[1]):
+            file = Xmlfile(Config.resultfile)
+            resultChild = file.addChild(file.getRoot(), 'result')
+
             mc = MetricCalculator(window.leftImageLabel.image, window.rightImageLabel.image)
             method = getattr(mc, reversed[selected])
             starttime = time.time()
             value = method()
             stoptime = time.time()
+
+            file.addElement(resultChild, 'datetime', datetime.datetime.now().isoformat())
+            file.addElement(resultChild, 'value', round(value, 5),
+                            [('type', reversed[selected]),('time', round(stoptime-starttime, 5))])
+
             window.resultLabel.setText(f'Wynik: {value}\nCzas: {stoptime - starttime}s')
+
+            file.save()
         elif (im1.size[0] <= im2.size[0] and im1.size[1] <= im2.size[1]) or (im1.size[0] >= im2.size[0] and im1.size[1] >= im2.size[1]):
             if (im1.size[0] >= im2.size[0] and im1.size[1] >= im2.size[1]):
                 im1, im2 = im2, im1
+
+            file = Xmlfile(Config.resultseriesfile)
+            resultChild = file.addChild(file.getRoot(), 'result')
 
             it = ImageTransformer(im2)
             starttime = time.time()
@@ -139,6 +156,12 @@ def calculateMetricAction(window):
 
             stoptime = time.time()
             logging.debug(maxvalueCoordinates)
+            file.addElement(resultChild, 'datetime', datetime.datetime.now().isoformat())
+            file.addElement(resultChild, 'value', round(maxvalue, 5),
+                            [('type', reversed[selected]),
+                             ('time', round(stoptime - starttime, 5)),
+                             ('coordinates', maxvalueCoordinates)])
+            file.save()
             window.resultLabel.setText(f'Wynik: {maxvalue}\nCzas: {stoptime - starttime}s'
                                        f'\nLiczba operacji: {n}\nLewy górny piksel wzorca: {maxvalueCoordinates}')
             id = ImageDraw.Draw(im2)
@@ -149,19 +172,51 @@ def calculateMetricAction(window):
         logerror()
 def calculateAllMetricsButton(window):
     logging.debug("Wszystkie metryki")
-    resultFile = open('result.xml', 'w')
+
+    file = Xmlfile(Config.resultallfile)
+    resultChild = file.addChild(file.getRoot(), 'result')
+
     text = ''
-    xmltext = '<result>\n'
     mc = MetricCalculator(window.leftImageLabel.image, window.rightImageLabel.image)
     for metric, metricName in Config.availableMetrics.items():
         if(metric in Config.slowMetrics):
             continue
         mc.refreshImages()
         method = getattr(mc, metric)
+        starttime = time.time()
         metricvalue = method()
-        xmltext += f"<{metric}>{metricvalue}</{metric}>\n"
+        stoptime = time.time()
+        file.addElement(resultChild, 'datetime', datetime.datetime.now().isoformat())
+        file.addElement(resultChild, metric, round(metricvalue, 5), [('time',round(stoptime-starttime, 5))])
         text += f"{metricName}: {metricvalue:.3f} {Config.metricsProperties[metric]['range']}\n"
-    xmltext += '</result>'
-    resultFile.write(xmltext)
-    resultFile.close()
+
+    file.save()
     window.showResult(text)
+
+class Xmlfile:
+    def __init__(self, path):
+        if not os.path.exists(path):
+            file = open(path, 'w')
+            file.write('<results></results>')
+            file.close()
+
+        self.path = path
+        self.tree = ElementTree.parse(path)
+        self.root = self.tree.getroot()
+
+    def getRoot(self):
+        return self.root
+
+    def addChild(self, parent, name):
+        child = ElementTree.SubElement(parent, name)
+        return child
+
+    def addElement(self, parent, tag, value, attributes = list()):
+        el = ElementTree.SubElement(parent, tag)
+        for key, val in attributes:
+            el.set(key, str(val))
+        el.text = str(value)
+
+    def save(self):
+        ElementTree.indent(self.root, space='\t', level=0)
+        self.tree.write(self.path)
