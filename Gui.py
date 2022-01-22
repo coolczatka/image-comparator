@@ -16,7 +16,7 @@ from io import BytesIO
 class MainWindow(QMainWindow):
     def __init__(self):
         super(QMainWindow, self).__init__()
-        self.setGeometry(50, 50, 500, 300)
+        # self.setGeometry(50, 50, 500, 300)
         self.setWindowTitle(Config.appname)
 
         self.leftImageLabel = ImageLabel()
@@ -246,7 +246,7 @@ class RotationDialog(QDialog):
 class CuttingDialog(QDialog):
     def __init__(self, parent):
         super(QDialog, self).__init__()
-        self.setWindowTitle('Rotatcja')
+        self.setWindowTitle('Przycinanie')
         self.parent = parent
 
         self.sizeInput = QLineEdit(f'(0, 0) ({self.parent.image.size[0]},{self.parent.image.size[1]})')

@@ -1,6 +1,8 @@
 import copy
 import datetime
 import logging
+
+import numpy as np
 from PIL import Image as ImageModule, ImageDraw
 from io import BytesIO
 
@@ -9,7 +11,7 @@ from imagemodifiers import NoiceHelper, ImageTransformer
 from metrics import MetricCalculator
 import time
 import re
-import numpy as np
+
 import os
 from xml.etree import ElementTree
 from exceptions import logerror
@@ -149,8 +151,10 @@ def calculateMetricAction(window):
                     method = getattr(mc, reversed[selected])
                     value = method()
                     n+=1
-                    results.append(value)
-                    coordinates.append((i, j))
+                    if not np.isnan(value):
+                        results.append(value)
+                        coordinates.append((i, j))
+
             maxvalue = Config.metricsProperties[reversed[selected]]['maxsim'](results)
             maxvalueCoordinates = coordinates[results.index(maxvalue)]
 
@@ -160,7 +164,8 @@ def calculateMetricAction(window):
             file.addElement(resultChild, 'value', round(maxvalue, 5),
                             [('type', reversed[selected]),
                              ('time', round(stoptime - starttime, 5)),
-                             ('coordinates', maxvalueCoordinates)])
+                             ('coordinates', maxvalueCoordinates),
+                             ('n_operations', n)])
             file.save()
             window.resultLabel.setText(f'Wynik: {maxvalue}\nCzas: {stoptime - starttime}s'
                                        f'\nLiczba operacji: {n}\nLewy górny piksel wzorca: {maxvalueCoordinates}')
@@ -176,6 +181,7 @@ def calculateAllMetricsButton(window):
     file = Xmlfile(Config.resultallfile)
     resultChild = file.addChild(file.getRoot(), 'result')
 
+    file.addElement(resultChild, 'datetime', datetime.datetime.now().isoformat())
     text = ''
     mc = MetricCalculator(window.leftImageLabel.image, window.rightImageLabel.image)
     for metric, metricName in Config.availableMetrics.items():
@@ -186,18 +192,18 @@ def calculateAllMetricsButton(window):
         starttime = time.time()
         metricvalue = method()
         stoptime = time.time()
-        file.addElement(resultChild, 'datetime', datetime.datetime.now().isoformat())
         file.addElement(resultChild, metric, round(metricvalue, 5), [('time',round(stoptime-starttime, 5))])
         text += f"{metricName}: {metricvalue:.3f} {Config.metricsProperties[metric]['range']}\n"
 
     file.save()
     window.showResult(text)
 
+
 class Xmlfile:
     def __init__(self, path):
         if not os.path.exists(path):
             file = open(path, 'w')
-            file.write('<results></results>')
+            file.write('<?xml version="1.0" encoding="UTF-8"?><results></results>')
             file.close()
 
         self.path = path

@@ -25,8 +25,8 @@ class NoiceHelper():
         imageArray = np.array(self.image)
         for height in range(imageArray.shape[0]):
             for width in range(imageArray.shape[1]):
+                r = random.random()
                 for canal in range(imageArray.shape[2]):
-                    r = random.random()
                     if(r < part):
                         blackorwhite = 255 if random.random() > .5 else 0
                         imageArray[height, width, canal] = blackorwhite

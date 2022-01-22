@@ -5,9 +5,9 @@ import numpy as np
 
 class Config:
 
-    appname = ''
+    appname = 'Image comparator'
 
-    defaultImg = 'static/entropy.png'
+    defaultImg = 'static/example.jpg'
 
     logfile = 'debug.log'
     logtarget = 'stdout'
