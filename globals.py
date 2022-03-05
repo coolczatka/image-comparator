@@ -78,4 +78,5 @@ class Config:
         'saltandpepper': 'Sól i pieprz',
         'gassianblur': 'Rozmycie gaussa'
     }
+    XmlAddAttributes = True
 

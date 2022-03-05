@@ -127,9 +127,11 @@ def calculateMetricAction(window):
             stoptime = time.time()
 
             file.addElement(resultChild, 'datetime', datetime.datetime.now().isoformat())
-            file.addElement(resultChild, 'value', round(value, 5),
-                            [('type', reversed[selected]),('time', round(stoptime-starttime, 5))])
-
+            if Config.XmlAddAttributes:
+                file.addElement(resultChild, 'value', round(value, 5),
+                                [('type', reversed[selected]),('time', round(stoptime-starttime, 5))])
+            else:
+                file.addElement(resultChild, 'value', round(value, 5),[])
             window.resultLabel.setText(f'Wynik: {value}\nCzas: {stoptime - starttime}s')
 
             file.save()
@@ -161,11 +163,14 @@ def calculateMetricAction(window):
             stoptime = time.time()
             logging.debug(maxvalueCoordinates)
             file.addElement(resultChild, 'datetime', datetime.datetime.now().isoformat())
-            file.addElement(resultChild, 'value', round(maxvalue, 5),
-                            [('type', reversed[selected]),
-                             ('time', round(stoptime - starttime, 5)),
-                             ('coordinates', maxvalueCoordinates),
-                             ('n_operations', n)])
+            if Config.XmlAddAttributes:
+                file.addElement(resultChild, 'value', round(maxvalue, 5),
+                                [('type', reversed[selected]),
+                                 ('time', round(stoptime - starttime, 5)),
+                                 ('coordinates', maxvalueCoordinates),
+                                 ('n_operations', n)])
+            else:
+                file.addElement(resultChild, 'value', round(maxvalue, 5), [])
             file.save()
             window.resultLabel.setText(f'Wynik: {maxvalue}\nCzas: {stoptime - starttime}s'
                                        f'\nLiczba operacji: {n}\nLewy górny piksel wzorca: {maxvalueCoordinates}')
@@ -192,7 +197,10 @@ def calculateAllMetricsButton(window):
         starttime = time.time()
         metricvalue = method()
         stoptime = time.time()
-        file.addElement(resultChild, metric, round(metricvalue, 5), [('time',round(stoptime-starttime, 5))])
+        if Config.XmlAddAttributes:
+            file.addElement(resultChild, metric, round(metricvalue, 5), [('time',round(stoptime-starttime, 5))])
+        else:
+            file.addElement(resultChild, metric, round(metricvalue, 5), [])
         text += f"{metricName}: {metricvalue:.3f} {Config.metricsProperties[metric]['range']}\n"
 
     file.save()
