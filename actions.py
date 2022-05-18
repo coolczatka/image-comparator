@@ -44,7 +44,7 @@ def translationButtonAction(imageLabel, dialogWindow):
     logging.debug("Akcja translacji")
     vectorText = dialogWindow.sizeInput.text()
     left, up = vectorText.split(',')
-    vector = (1, 0, int(left), 0, 1, int(up))
+    vector = (1, 0, -int(left), 0, 1, -int(up))
     logging.debug(vector)
     it = ImageTransformer(imageLabel.image)
     changed = it.move(vector)
