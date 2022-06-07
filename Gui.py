@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, \
     QVBoxLayout, QWidget, QLabel, QMenu, QFileDialog, QDialog, \
-    QRadioButton, QLineEdit, QPushButton, QComboBox, QMessageBox
-from PyQt5.QtGui import QIcon, QPixmap
+    QRadioButton, QLineEdit, QPushButton, QComboBox, QMessageBox, QAction
+from PyQt5.QtGui import QIcon, QPixmap, QActionEvent
 from globals import Config
 from PIL import Image
 from PIL.ImageQt import ImageQt
@@ -19,6 +19,11 @@ class MainWindow(QMainWindow):
         # self.setGeometry(50, 50, 500, 300)
         self.setWindowTitle(Config.appname)
 
+        menubar = self.menuBar()
+        aboutProgramMenu = menubar.addMenu('&Pomoc')
+        extractAction = QAction('&O programie', self)
+        aboutProgramMenu.triggered.connect(functools.partial(startAPD, self))
+        aboutProgramMenu.addAction(extractAction)
         self.leftImageLabel = ImageLabel()
         self.rightImageLabel = ImageLabel()
         self.resultImage = None
@@ -205,19 +210,23 @@ class TranslationDialog(QDialog):
         self.buildLayout()
         self.connectEvents()
 
-    def buildLayout(self):
+class AboutProgramDialog(QDialog):
+    def __init__(self, parent):
+        super(QDialog, self).__init__()
+        self.setWindowTitle('O programmie')
+        self.parent = parent
+
+        label1 = QLabel('Program do pracy dyplomowej 2022')
+        label2 = QLabel('Autor: Karol Baran')
+
         widget = QWidget(self.parent)
         vertical = QVBoxLayout(widget)
 
-        vertical.addWidget(self.sizeInput)
-        vertical.addWidget(self.acceptButton)
+        vertical.addWidget(label1)
+        vertical.addWidget(label2)
         self.setLayout(vertical)
-
-        return widget
-
-    def connectEvents(self):
-        self.acceptButton.clicked.connect(functools.partial(translationButtonAction, self.parent, self))
-
+def startAPD(parent):
+    AboutProgramDialog(parent).exec_()
 class RotationDialog(QDialog):
     def __init__(self, parent):
         super(QDialog, self).__init__()
