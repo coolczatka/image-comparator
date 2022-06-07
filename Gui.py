@@ -123,8 +123,11 @@ class ImageLabel(QLabel):
         action = menu.exec_(gp)
 
         if action == loadImageAction:
-            newPath, _ = QFileDialog.getOpenFileName(self)
-            self.setupImage(newPath)
+            try:
+                newPath, _ = QFileDialog.getOpenFileName(self)
+                self.setupImage(newPath)
+            except Exception:
+                pass
         elif action == resizeAction:
             rd = ResizeDialog(self)
             rd.exec_()
