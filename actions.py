@@ -102,11 +102,15 @@ def addGaussianBlurAction(imageLabel, dialogWindow):
     imageLabel.setupImageFromMemory(nh.gassianblur(masksize))
 
 def compressImageAction(imageLabel, dialogWindow):
-    logging.debug("Kompresja")
-    compressionRate = int(dialogWindow.quality.text())
-    buffer = BytesIO()
-    imageLabel.image.save(buffer, "JPEG", quality = compressionRate)
-    imageLabel.setupImage(buffer)
+    try:
+        logging.debug("Kompresja")
+        compressionRate = int(dialogWindow.quality.text())
+        buffer = BytesIO()
+        print(imageLabel.image)
+        imageLabel.image.save(buffer, "JPEG", quality = compressionRate)
+        imageLabel.setupImage(buffer)
+    except Exception as e:
+        print(e)
 
 def calculateMetricAction(window):
     selected = window.metricSelect.currentText()
